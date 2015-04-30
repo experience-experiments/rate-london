@@ -1,0 +1,53 @@
+
+<!-- saved from url=(0046)http://ratelondon.parseapp.com/views/main.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"></head><body><main id="mainContainer">
+	<div id="mapContainer">
+		
+		
+	</div>
+	
+	<div id="legend" class="legend">
+		
+		<ul ng-repeat="category in categories">
+				<input style="width:20px" type="radio" ng-model="$parent.selectedCategoryIndex" name="selectedCategoryIndex" id="selectedCategoryIndex" ng-value="$index" checked="">
+				<input type="color" ng-model="category.color">&nbsp;<input id="{{&#39;category&#39;+$index}}" ng-model="category.name" type="text" placeholder="Name" maxlength="30" style="width:125px" ng-enter="onSubmitCategory()">
+
+		</ul>
+		
+		<!-- ADD CATEGORY -->
+		<ul>
+				<button ng-click="onSubmitCategory()" style="cursor: pointer;">&nbsp;+&nbsp; Add </button>
+				<!--<input id="newCategoryColor" type="color" ng-model="presetColors[categories.length]">&nbsp;<input ng-model="newCategoryName" type="text" placeholder="New category" maxlength="30" style="width:125px" ng-enter="onSubmitCategory()">-->
+		</ul>
+		
+		
+	</div>
+	
+	<!--
+	<div id="hiddenInput">
+		<input id="hiddenTextInput" ng-model="currentLabel" ng-enter="onKeyPressInput()" ng-keypress="onKeyPressInput($event)" autofocus>
+	</div>-->
+</main>
+
+<!--
+<div id="holder">
+	<input valid-file ng-model="inputFile" class="btn btn-default btn-file" required id="profilePhotoFileUpload" type="file" name="inputForm.image" onchange="angular.element(this).scope().onChangeFile()" accept="image/*" >
+
+	<img ng-src="{{fileDataURL}}" >
+
+
+	<form ng-hide="currentUser">
+	    <h2>Sign up</h2>
+	    Email: <input type="email" ng-model="user.email" /><br />
+	    Username: <input type="text" ng-model="user.username" /><br />
+	    Password: <input type="password" ng-model="user.password" /><br />
+	    <button ng-click="signUp(user)">Sign up</button>
+	  </form>
+ 
+	  <div ng-show="currentUser">
+	    <h2>Welcome {{currentUser.get('username')}}</h2>
+	    <p>You have been successfully logged in</p>
+	    <button ng-click="logOut()">Log out</button>
+	  </div>
+</div> 
+--></body></html>

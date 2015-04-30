@@ -1,0 +1,14 @@
+{
+  "global": {
+    "parseVersion": "1.4.0"
+  },
+  "applications": {
+    "_default": {
+      "link": "pixwall"
+    },
+    "pixwall": {
+      "applicationId": "yG6kTzbckn6N7PthUEknsFFelrFLSts6d8Oxirjc",
+      "masterKey": "LAqLfvQYlIuiGlaLGed6fVM14gn58uMdd4MZZ5Or"
+    }
+  }
+}
