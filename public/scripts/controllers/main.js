@@ -8,14 +8,15 @@
  * Controller of the pixwallApp
  */
 angular.module('pixwallApp')
-  .controller('MainCtrl', function ($scope,$timeout) {
+  .controller('MainCtrl', function ($scope,$timeout,$route,$location) {
    	
    	  
    	  $scope.mouse;
       $scope.presetColors=['#FFC95B','#62A2FF','#8668FF','#FFEE6F','#E88853','#FF5B5E','#D65FE8','#59E8E0','#62FF89','#AEE865'];
       $scope.selectedCategoryIndex = 0;
       $scope.categories=[{color: $scope.presetColors[0],name:""}];
-     
+      $location.path("/map/nkfYwizCAG");
+	  			      
 	  $scope.currentLabel;
 	      
 	     //FORMAT:
@@ -27,28 +28,7 @@ angular.module('pixwallApp')
 		 */
        $scope.mapData=[];
       
-      
-	   function dataToView(){
-		   
-		   for(var i in $scope.mapData){
-			   
-			  var currentMapDataElement =  $scope.mapData[i];
-			   if(currentMapDataElement.area){
-				   
-				   
-				   
-			   }else if(currentMapDataElement.text){
-				   
-				   
-			   }else if(currentMapDataElement.pin){
-				   
-				   
-			   }
 
-		   }
-		   
-	   }
-      
       
        	$scope.onSubmitCategory = function (e){
 	      
@@ -65,7 +45,81 @@ angular.module('pixwallApp')
 		  	//INIT PARSE
 	  		Parse.initialize("jWmKfNZKKvQBj3wqu6a5jV4hhrUlWBW6guUGfieT", "oCl7Zy22n7HyCtBooJhQ7aLNMihz6dJTpBcz7XiZ");
 	  		var MapData = Parse.Object.extend("MapData");
-	  		var parseMapData = new MapData();
+	  		var AreaData = Parse.Object.extend("Area");
+	  		var LabelData = Parse.Object.extend("Label");
+	  		var PinData = Parse.Object.extend("Pin");
+	  		//var parseMapData = new MapData();
+			var parseMapData;
+			var query = new Parse.Query(MapData);
+			//$location.replace();
+			//$route.current.params = {"mapId":"nkfYwizCAG"};
+
+			query.get("nkfYwizCAG", {
+			  success: function(mapData) {
+			    // The object was retrieved successfully.
+			    parseMapData = mapData;
+			    
+			    //console.log(parseMapData.get("area"));
+			    //////////////////////
+			   /////////AREAS/////////
+			   ///////////////////////
+			    var areaMapData = parseMapData.get("area");
+			    for(var i in areaMapData){
+				    
+				     var newArea = createArea(areaMapData[i]["color"]);
+				     
+				     //newArea.setAttribute("path", );
+				     newArea.firstChild.firstChild.setAttribute("d", areaMapData[i]["path"]);						
+   			    }
+			    
+			     //////////////////////
+			   /////////PINS/////////
+			   ///////////////////////
+			    var pinMapData = parseMapData.get("pin");
+			    for(var i in pinMapData){
+				    
+				     var newPin = createPin(pinMapData[i]["position"].x,pinMapData[i]["position"].y);
+				        
+			    }
+			    
+			    
+			     //////////////////////
+			   /////////LABELS/////////
+			   ///////////////////////
+			    var labelMapData = parseMapData.get("label");
+			    for(var i in labelMapData){
+				    
+				     var newLabel = createLabel(labelMapData[i]["position"].x,labelMapData[i]["position"].y,labelMapData[i]["text"]);
+				        
+			    }
+			    
+			    console.log("set location:");
+
+			    
+			  },
+			  error: function(object, error) {
+			    // The object was not retrieved successfully.
+			    // error is a Parse.Error with an error code and message.
+			  }
+			});
+	  		
+	  		
+	  		function saveData(){
+		  		//SAVE MAP
+				parseMapData.save(null, {
+				  success: function(mapData) {
+				    // Execute any logic that should take place after the object is saved.
+				    console.log('New object created with objectId: ' + mapData.id);
+				  },
+				  error: function(mapData, error) {
+				    console.log("Sorry buddy. Couldn't save your map " + error.message);
+				  }
+				});
+
+		  		
+	  		}
+	  		
+	  	  		
   	 		
 			var mapContainer,map;
 			var camera, scene, renderer,zoomFactor = 1;
@@ -111,18 +165,31 @@ angular.module('pixwallApp')
 				//EVENTS 
 				window.addEventListener( 'resize', onWindowResize, false );
 				mapContainer.addEventListener( 'mousedown', onMouseDown, false );
+				mapContainer.addEventListener( 'ondblclick', onDbleClick, false );
 				document.addEventListener("keydown", onKeyPressInput);
+				window.addEventListener( 'mousemove', onMouseMove, false );
 
 				
+				function onDbleClick(e){
+					console.log("ondoubleClick");
+					
+					//CALCULATE 2D POSITION FROM 3D PLANE
+					var pos = calculate2DPosition(e);
+					currentColor = $scope.categories[$scope.selectedCategoryIndex].color;
+					
+					//CREATE NEW PIN
+					var newPin = createPin(pos.x,pos.y);	
+					var newPinData = {"position":pos};
+					newPin.data = newPinData;
+					parseMapData.addUnique("pin",(newPinData));
+
+					
+						
+				 };
 				
 				
-				 //$(map).on('mousedown', function(e){
 				function onMouseDown(e){
 					
-					
-					//REINIT LABEL
-					$scope.currentLabel = null;
-				
 					//CALCULATE 2D POSITION FROM 3D PLANE
 					var pos = calculate2DPosition(e);
 					 
@@ -131,13 +198,16 @@ angular.module('pixwallApp')
 					//RESET AREA:
 					currentArea = null;
 					
-					
-					//createBubble(pos.x,pos.y);
+					//REINIT LABEL
+					//$scope.currentLabel = null;
 					
 					window.addEventListener( 'mousemove', onMouseDownMove, false );
 					window.addEventListener( 'mouseup', onMouseUp, false );
-						
+
 				 };
+				 
+				 
+				 
 				 
 				function onMouseDownMove(e){
 					e.preventDefault();
@@ -147,13 +217,21 @@ angular.module('pixwallApp')
 					if(currentArea==null){					
 						currentArea = createArea(currentColor);
 						
+						var newAreaData = {"color":currentColor,"position":{"x":"0","y":"0"}};
+						currentArea.data = newAreaData;
+						parseMapData.addUnique("area",(newAreaData));
+						
 					}else {
 
 						//CALCULATE 2D POSITION FROM 3D PLANE
 						var pos = calculate2DPosition(e);
-						addAreaPoint(currentArea,pos);
+						var currentPathString = addAreaPoint(currentArea,pos);
+						
+						currentArea.data["path"] = currentPathString;
+						
 					}
 					
+
 				};
 
 
@@ -161,29 +239,11 @@ angular.module('pixwallApp')
 				 
 				 function onMouseUp(e){
 					 
-					 //CALCULATE 2D POSITION FROM 3D PLANE
 					var pos = calculate2DPosition(e);
-					 if(currentArea){
-						 
-						 	
-						}else {
-							createPin(pos.x,pos.y);
-							
-					 }
+					//CREATE PIN IF NO AREA
 					
-					//SAVE MAP
-					parseMapData.save(null, {
-					  success: function(mapData) {
-					    // Execute any logic that should take place after the object is saved.
-					    console.log('New object created with objectId: ' + mapData.id);
-					  },
-					  error: function(mapData, error) {
-					    // Execute any logic that should take place if the save fails.
-					    // error is a Parse.Error with an error code and message.
-					    alert('Failed to create new object, with error code: ' + error.message);
-					  }
-					});
 					
+					if(currentArea!=null) saveData();	
 					 
 					 window.removeEventListener( 'mousemove', onMouseDownMove );
 					 window.removeEventListener( 'mouseup', onMouseUp );
@@ -192,31 +252,44 @@ angular.module('pixwallApp')
 				 
 				 
 				 
-				window.addEventListener( 'mousemove', onMouseMove, false );
 				function onMouseMove( e){
-					$scope.mouse = {x:e.clientX / window.innerWidth,y:e.clientY / window.innerHeight}
+					$scope.mouse = calculate2DPosition(e);
 				}
 				 
 				 
 				function onKeyPressInput(e){
 	      
-			      console.log(e);
 			      
-			      //DON'T DO THAT IF WE'RE ON A TEXT INPUT
-			      if(e.target.tagName=="INPUT")return;
+			      if( $scope.currentLabel==null){	
+				         
+				         //DON'T DO THAT IF WE'RE ON A TEXT INPUT
+						// if(e.target.tagName=="INPUT")return;
+						 
+				       $scope.currentLabel = createLabel($scope.mouse.x,$scope.mouse.y,String.fromCharCode(e.charcode));
+				       //CREATE NEW PARSE LABEL DATA
+				       var newLabelData = {"position":$scope.mouse,"text":$scope.currentLabel.value};
+					   parseMapData.addUnique("label",newLabelData);
+					   $scope.currentLabel.data = newLabelData;
+				       
+				       
+			      }else if(e.keyCode == "13"){
+			      	
+			      		console.log("save TEXT : "+$scope.currentLabel.value);
+			      		
+			      		//SAVE DATA
+			      		
+				       saveData();
 			      
-			      if( !$scope.currentLabel){	      
-				      var pos = calculate2DPosition(e);
-						
-						
-				       $scope.currentLabel = createLabel(pos.x,pos.y,String.fromCharCode(e.charcode));
-			      }else  if(e.keyCode == 13){
-			      
-			      		//IF PRESS ENTER
-				  	
+			      		//IF PRESS ENTER REMOVE FOCUS
+				  		
 				      console.log('pressed enter');
 				      if($scope.currentLabel)$scope.currentLabel.blur();
-				      $scope.currentLabel= null;
+				      $scope.currentLabel = null;
+				      render();
+			      }else{
+				      console.log("save new field:"+$scope.currentLabel.value);
+				      $scope.currentLabel.data.text = $scope.currentLabel.value;
+				      saveData();
 			      }
 				  
 			      
@@ -276,8 +349,8 @@ angular.module('pixwallApp')
 					    currentBubble=null;
 					   
 					   //REINIT LABEL
-					   	if($scope.currentLabel)$scope.currentLabel.blur();						
-					   	$scope.currentLabel = null;
+					   //	if($scope.currentLabel)$scope.currentLabel.blur();						
+					   //	$scope.currentLabel = null;
 					    
 					    //PANNING
 						
@@ -304,7 +377,6 @@ angular.module('pixwallApp')
 			  
 		      });
 			
-
 			function onWindowResize() {
 
 				camera.aspect = window.innerWidth / window.innerHeight;
@@ -372,6 +444,8 @@ angular.module('pixwallApp')
 				object.position.y = y;
 				object.position.z = 100;
 				
+				
+				
 	  	 		return newLabel;
 	  	 		
   	 		}
@@ -382,10 +456,8 @@ angular.module('pixwallApp')
 	  	 		console.log("create Pin "+x+" "+y);
 	  	 		
 	  	 		var newPin = document.createElement( 'img' );						
-				//newPin.setAttribute("src", "images/pin.svg");
 				newPin.setAttribute("src", "images/redPointer.png");
 				newPin.setAttribute("width", 50);
-				//newPin.setAttribute("height", 50);
 				
 				var object = new THREE.CSS3DObject( newPin );
 				scene.add( object );
@@ -394,6 +466,7 @@ angular.module('pixwallApp')
 				object.position.y = y+35;
 				object.position.z = 10;
 				
+								
 	  	 		return newPin;
 	  	 		
   	 		}
@@ -415,21 +488,22 @@ angular.module('pixwallApp')
 				object.position.y = 0;
 				object.position.z = 0.1;
 				
+				
+				
 				return newArea;
 	  	 		
   	 		}
   	 		
 				  	 		
   	 		
-  	 		function createBubble(x,y){
+  	 		function createBubble(x,y,color){
 	  	 		console.log("create bubble "+x+" "+y);
 	  	 		
 	  	 		 	  	 		
 	  	 		var newBubble = document.createElement( 'div' );
 	  	 		
-		  	 	newBubble.innerHTML='<svg > <circle cx="50" cy="50" r="40" stroke="black" stroke-width="2" fill="'+($scope.categories[$scope.selectedCategoryIndex].color)+'" /></svg>';		
+		  	 	newBubble.innerHTML='<svg><circle cx="50" cy="50" r="40" stroke="black" stroke-width="2" fill="'+color+'" /></svg>';		
 		  	
-	  	 		//newBubble.innerHTML='<div height="100" width="100" style="z-index:4;opacity:0.9;background-color:red;background-blend-mode: multiply; mix-blend-mode: multiply" > TEST ME</div>';					
 	  	 		newBubble.className = 'bubble';	  
 				var object = new THREE.CSS3DObject( newBubble );
 				scene.add( object );
@@ -449,16 +523,24 @@ angular.module('pixwallApp')
 				 		
   	 		function addAreaPoint(area,point){
 	  	 		
-	  	 		
 	  	 		//console.log(pos);
 				area.points.push(point);
 				
 				var simplifiedPoints = simplify(area.points, 4, false);
 				
+				return updateArea(area,simplifiedPoints);
+				
+				
+  	 		}
+  	 		
+  	 		
+  	 		function updateArea(area,points){
+	  	 		
+	  	 		
 				//RECALCULATE PATH FOR SVG
 				var currentPathString = [];
-				for(var i=0;i<simplifiedPoints.length;i++){
-					var currentPoint = simplifiedPoints[i];
+				for(var i=0;i<points.length;i++){
+					var currentPoint = points[i];
 					//FIRST TIME WE MOVE THE PATH TO POSITION
 					if(i==0){
 						currentPathString = "M "+parseInt(map.width/2+currentPoint.x)+" "+parseInt(map.height/2-currentPoint.y)+" ";
@@ -468,14 +550,18 @@ angular.module('pixwallApp')
 					
 				}
 				//CLOSE PATH
-				currentPathString+="Z";
-				//currentArea.firstChild.firstChild.setAttribute("d", currentPathValues);		
-				
+				currentPathString += "Z";	
 				
 				currentArea.firstChild.firstChild.setAttribute("d", currentPathString);						
 				
+				return currentPathString;
 	  	 		
   	 		}
+  	 		
+  	 		
+  	 		
+ 
+  	 		
 
 			
 			
