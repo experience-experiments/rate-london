@@ -8,17 +8,18 @@
  * Controller of the pixwallApp
  */
 angular.module('pixwallApp')
-  .controller('MainCtrl', function ($scope,$timeout,$route,$location) {
+  .controller('MainCtrl', function ($scope,$timeout,$route,$location,$routeParams) {
    	
    	  
    	  $scope.mouse;
       $scope.presetColors=['#FFC95B','#62A2FF','#8668FF','#FFEE6F','#E88853','#FF5B5E','#D65FE8','#59E8E0','#62FF89','#AEE865'];
       $scope.selectedCategoryIndex = 0;
-      $scope.categories=[{color: $scope.presetColors[0],name:""}];
-      $location.path("/map/nkfYwizCAG");
-	  			      
+      $scope.categories=[{color: $scope.presetColors[0],name:""},{color: $scope.presetColors[1],name:""},{color: $scope.presetColors[2],name:""}]; 
 	  $scope.currentLabel;
-	      
+	  var location = $location;
+	  $scope.mapName = "My new map";
+	  $scope.shareURL=window.location.href;
+	    
 	     //FORMAT:
 	     /*   [ 
 		     	{"area":{"category":"1","path":"M 10 10 L 20 20","color":"#62A2FF"}},
@@ -28,8 +29,63 @@ angular.module('pixwallApp')
 		 */
        $scope.mapData=[];
       
+   		var mapContainer,map;
+		var camera, scene, renderer,zoomFactor = 1;
+		var objects;
+		var currentBubble,currentArea;
+		var raycaster = new THREE.Raycaster();
+		var mouse2D = new THREE.Vector2();
+		var currentArea,currentColor;
+  
+		//INIT PARSE
+  		Parse.initialize("jWmKfNZKKvQBj3wqu6a5jV4hhrUlWBW6guUGfieT", "oCl7Zy22n7HyCtBooJhQ7aLNMihz6dJTpBcz7XiZ");
+  		var MapData = Parse.Object.extend("MapData");
+		var parseMapData;
+		
+		
+		//HACK TO NOT RELOAD PAGE ON URL CHANGE
+		 var lastRoute = $route.current;
+	    $scope.$on('$locationChangeSuccess', function(event) {
+	        if($route.current.$$route.controller === 'MainCtrl'){ 
+	        // Will not load only if my view use the same controller
+	            $route.current = lastRoute;
+	        }
+	    });
+		
+		//UPDATE MAP NAME ON PARSE
+		$scope.$watch('mapName',function(){
+			if(parseMapData){
+				parseMapData.set("name",$scope.mapName);
+				parseMapData.save();
+			}
+		});
+		
+		//UPDATE MAP NAME ON PARSE
+		$scope.onChangeCategory = function(e){
+			console.log("save");
+			 if(parseMapData){	
+				 
+				 parseMapData.remove("category");
+				 parseMapData.save(null,{
+				  success: function(mapData) {
+					
+						for(var i=0;i<$scope.categories.length;i++){
+							if($scope.categories[i].name!=''){
+								 var category = {"index":i,"name":$scope.categories[i].name,"color":$scope.categories[i].color};
+								 console.log(category);
+								 parseMapData.addUnique("category",category);
+							 }
+						 }
+					  parseMapData.save(null);
+					}
+				  });
+				 
+				 
+			 }
 
-      
+		};
+		
+		
        	$scope.onSubmitCategory = function (e){
 	      
 		      //NEW CATEGORY
@@ -40,94 +96,172 @@ angular.module('pixwallApp')
 		      //SELECT NEW CATEGORY:
 		      $scope.selectedCategoryIndex=$scope.categories.length-1;
 		      
+		      
+		     $scope.onChangeCategory();
+		      
 		  }
-		  	
-		  	//INIT PARSE
-	  		Parse.initialize("jWmKfNZKKvQBj3wqu6a5jV4hhrUlWBW6guUGfieT", "oCl7Zy22n7HyCtBooJhQ7aLNMihz6dJTpBcz7XiZ");
-	  		var MapData = Parse.Object.extend("MapData");
-	  		var AreaData = Parse.Object.extend("Area");
-	  		var LabelData = Parse.Object.extend("Label");
-	  		var PinData = Parse.Object.extend("Pin");
-	  		//var parseMapData = new MapData();
-			var parseMapData;
-			var query = new Parse.Query(MapData);
-			//$location.replace();
-			//$route.current.params = {"mapId":"nkfYwizCAG"};
-
-			query.get("nkfYwizCAG", {
-			  success: function(mapData) {
-			    // The object was retrieved successfully.
-			    parseMapData = mapData;
-			    
-			    //console.log(parseMapData.get("area"));
-			    //////////////////////
-			   /////////AREAS/////////
-			   ///////////////////////
-			    var areaMapData = parseMapData.get("area");
-			    for(var i in areaMapData){
-				    
-				     var newArea = createArea(areaMapData[i]["color"]);
-				     
-				     //newArea.setAttribute("path", );
-				     newArea.firstChild.firstChild.setAttribute("d", areaMapData[i]["path"]);						
-   			    }
-			    
-			     //////////////////////
-			   /////////PINS/////////
-			   ///////////////////////
-			    var pinMapData = parseMapData.get("pin");
-			    for(var i in pinMapData){
-				    
-				     var newPin = createPin(pinMapData[i]["position"].x,pinMapData[i]["position"].y);
-				        
-			    }
-			    
-			    
-			     //////////////////////
-			   /////////LABELS/////////
-			   ///////////////////////
-			    var labelMapData = parseMapData.get("label");
-			    for(var i in labelMapData){
-				    
-				     var newLabel = createLabel(labelMapData[i]["position"].x,labelMapData[i]["position"].y,labelMapData[i]["text"]);
-				        
-			    }
-			    
-			    console.log("set location:");
-
-			    
-			  },
-			  error: function(object, error) {
-			    // The object was not retrieved successfully.
-			    // error is a Parse.Error with an error code and message.
-			  }
-			});
-	  		
-	  		
-	  		function saveData(){
-		  		//SAVE MAP
-				parseMapData.save(null, {
+		   
+		   
+		    $scope.onSubmitNewMap = function(e){
+				//REMOVE ALL PREVIOUS STUFF
+				var objectsToRemove = []
+		   		
+		   		try {scene.traverse (function (object)
+				{
+					
+					//console.log(object);
+				    if (object instanceof THREE.CSS3DObject)
+				    {
+				        //REMOVE EVERYTHING EXEPT MAP
+				         if (object.element.name == 'map' ){
+					         
+				         }else {
+					         console.log("remove object:"+object.element.name);
+					         
+					         objectsToRemove.push(object);
+				         }
+				           
+				    }
+				});
+				} catch(error){
+					console.log(error);
+				}
+		   		
+		   		for(var i=objectsToRemove.length;i>=0;i--){
+			   		scene.remove(objectsToRemove[i]);
+		   		}
+		   		
+		   		//CREATE NEW MAP
+		   		parseMapData = new MapData();
+		   		parseMapData.save(null, {
 				  success: function(mapData) {
-				    // Execute any logic that should take place after the object is saved.
+					  //CHANGE URL LOCATION
 				    console.log('New object created with objectId: ' + mapData.id);
+				      
+				    location.path("/map/"+mapData.id);
+				    $scope.$apply();
+				    
+				    $scope.shareURL=window.location.href;
+					
+					
 				  },
 				  error: function(mapData, error) {
 				    console.log("Sorry buddy. Couldn't save your map " + error.message);
 				  }
 				});
-
-		  		
+		   		//renderer.deallocateObject( obj );
+		   		
+	   		}
+		  	
+		  	///IF WE HAVE A MAP ID ////
+		  	console.log("PATH : "+$location.path()+" param: "+	$routeParams.mapId);
+		  	console.log($routeParams);
+		  	if($routeParams.mapId){
+				   	
+			  	var query = new Parse.Query(MapData);			
+				query.get($routeParams.mapId, {
+				  success: function(mapData) {
+				    // The object was retrieved successfully.
+				    parseMapData = mapData;
+				    
+				    //console.log(parseMapData.get("area"));
+				    //////////////////////
+				   /////////AREAS/////////
+				   ///////////////////////
+				    var areaMapData = parseMapData.get("area");
+				    for(var i in areaMapData){
+					    
+					     var newArea = createArea(areaMapData[i]["color"]);
+					     
+					     //newArea.setAttribute("path", );
+					     newArea.firstChild.firstChild.setAttribute("d", areaMapData[i]["path"]);						
+	   			    }
+				    
+				     //////////////////////
+				   /////////PINS/////////
+				   ///////////////////////
+				    var pinMapData = parseMapData.get("pin");
+				    for(var i in pinMapData){
+					    
+					     var newPin = createPin(pinMapData[i]["position"].x,pinMapData[i]["position"].y);
+					        
+				    }
+				    
+				    
+				   //////////////////////
+				   /////////LABELS/////////
+				   ///////////////////////
+				    var labelMapData = parseMapData.get("label");
+				    for(var i in labelMapData){
+					    
+					     var newLabel = createLabel(labelMapData[i]["position"].x,labelMapData[i]["position"].y,labelMapData[i]["text"]);
+					        
+				    }
+				    
+				    //////////// MAP NAME //////////
+				    $scope.mapName = parseMapData.get("name")?parseMapData.get("name"):"New Map";
+				    console.log(" MAP NAME ="+$scope.mapName);
+				    
+				    
+				    //CATEGORIES
+				    if(parseMapData.get("category")){
+					    var categoriesMapData = parseMapData.get("category");
+					    
+					    $scope.categories = [];
+					    for(var i in categoriesMapData){
+						    
+						     $scope.categories.push({"name":categoriesMapData[i].name,"color":categoriesMapData[i].color});
+						        
+					    }
+				    }
+				   				    
+				    
+				    
+					$scope.$apply();
+					
+				    
+				  },
+				  error: function(object, error) {
+				    // The object was not retrieved successfully.
+				    // error is a Parse.Error with an error code and message.
+				  }
+				});
+	  		
+	  		}else {
+		  		parseMapData = new MapData();
+		  		parseMapData.save(null, {
+				  success: function(mapData) {
+					  //CHANGE URL LOCATION
+				    console.log('New object created with objectId: ' + mapData.id);
+				      
+				    location.path("/map/"+mapData.id);
+				    $scope.$apply();
+				    
+				    $scope.shareURL=window.location.href;
+					
+					
+				  },
+				  error: function(mapData, error) {
+				    console.log("Sorry buddy. Couldn't save your map " + error.message);
+				  }
+				});
+	  		}
+		  	
+		  	
+	  		function saveData(){
+		  		//SAVE MAP
+				parseMapData.save(null, {
+				  success: function(mapData) {
+				    // Execute any logic that should take place after the object is saved.
+				    console.log('Save Map with objectId: ' + mapData.id);
+				  				    
+				  },
+				  error: function(mapData, error) {
+				    console.log("Sorry buddy. Couldn't save your map " + error.message);
+				  }
+				});
 	  		}
 	  		
-	  	  		
-  	 		
-			var mapContainer,map;
-			var camera, scene, renderer,zoomFactor = 1;
-			var objects;
-			var currentBubble,currentArea;
-			var raycaster = new THREE.Raycaster();
-			var mouse2D = new THREE.Vector2();
-			var currentArea,currentColor;
 			
 			init();
 			animate();
@@ -138,7 +272,7 @@ angular.module('pixwallApp')
 				
 				//INIT 3D
 				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 15000 );
-				camera.position.z = 1000;
+				camera.position.z = 2000;
 
 				scene = new THREE.Scene();
 				scene.autoUpdate = false;
@@ -146,29 +280,48 @@ angular.module('pixwallApp')
 				renderer = new THREE.CSS3DRenderer();
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				renderer.domElement.style.position = 'absolute';
-
+				
 				
 				var i, j;
 				var currentPathValues, currentPathPoints =[] ;
 				
 				//CREATE MAP
 				mapContainer = document.getElementById( 'mapContainer' );
-				map = document.createElement( 'img' );
+				/*map = document.createElement( 'img' );
 				map.src="images/map4000px.jpg";
+				map.name="map";
 				map.style.position = "absolute";
 				var object = new THREE.CSS3DObject( map );
 				scene.add( object );
 				map.object=object;
+				mapContainer.appendChild( renderer.domElement );*/
+				map = document.createElement( 'iframe' );
+				map.src="https://a.tiles.mapbox.com/v4/peutichat.1ebac5f0/page.html?access_token=pk.eyJ1IjoicGV1dGljaGF0IiwiYSI6ImctaW8xNEEifQ.p3JWkuUUcrfLHErAbw0mSQ#15/51.5128/-0.1255";
+				map.name="map";
+				map.style.position = "absolute";
+				map.width="4000";
+				map.height="3000";
+				map.style.pointerEvents ="none";
+				
+
+				var object = new THREE.CSS3DObject( map );
+				scene.add( object );
+				map.object=object;
 				mapContainer.appendChild( renderer.domElement );
+				
+				
+				//<iframe width='100%' height='500px' frameBorder='0' src='https://a.tiles.mapbox.com/v4/rma.d1ede389/attribution.html?access_token=pk.eyJ1Ijoicm1hIiwiYSI6IlBmeG5LajgifQ.Wy2W04j0Hn69yf0YeZD6UA'></iframe>
+				
 			
 				
 				//EVENTS 
 				window.addEventListener( 'resize', onWindowResize, false );
 				mapContainer.addEventListener( 'mousedown', onMouseDown, false );
 				mapContainer.addEventListener( 'ondblclick', onDbleClick, false );
-				document.addEventListener("keydown", onKeyPressInput);
+				//document.addEventListener("keydown", onKeyPressInput);
 				window.addEventListener( 'mousemove', onMouseMove, false );
-
+				
+				//ADD DELETE HERE
 				
 				function onDbleClick(e){
 					console.log("ondoubleClick");
@@ -182,9 +335,6 @@ angular.module('pixwallApp')
 					var newPinData = {"position":pos};
 					newPin.data = newPinData;
 					parseMapData.addUnique("pin",(newPinData));
-
-					
-						
 				 };
 				
 				
@@ -256,7 +406,7 @@ angular.module('pixwallApp')
 					$scope.mouse = calculate2DPosition(e);
 				}
 				 
-				 
+				 /*
 				function onKeyPressInput(e){
 	      
 			      
@@ -294,9 +444,12 @@ angular.module('pixwallApp')
 				  
 			      
 		      	}
+		      	*/
+		      	
+		      	
 				
 			}
-
+			
 			
 			
 			 $(window).on('wheel', function(e){
@@ -312,20 +465,22 @@ angular.module('pixwallApp')
 						
 						 if(!currentBubble){
 			        
-					        //console.log("PINCH!!");
+					        console.log(0.000001*eo.wheelDeltaY/120);
+					        console.log(camera.position.z);
 					        // perform desired zoom action here
-					        camera.position.z -= eo.wheelDeltaY* 0.4;
-		
-							console.log(camera.position.z);
-					        if(camera.position.z<500){
-					        	camera.position.z =500;
+					        camera.position.z = camera.position.z*(1 -0.05*(eo.wheelDeltaY)/120);
+							
+							//console.log(camera.position.z);
+							//MAX
+					        if(camera.position.z<10){
+					        	camera.position.z =10;
 					        }
 					        if(camera.position.z>4000){
 					        	camera.position.z =4000;
 					        }
 					        
 				        }else {
-					        console.log(currentBubble);
+					        //console.log(currentBubble);
 					        currentBubble.scale.x += eo.wheelDeltaY* 0.0002;
 					        currentBubble.scale.y += eo.wheelDeltaY* 0.0002;
 					        
@@ -359,7 +514,7 @@ angular.module('pixwallApp')
 	
 				          if(eo.wheelDeltaX < -100 && !scope.item.swipedLeft){
 				              // swipe left
-				              camera.position.x += delta* 10;
+				              camera.position.x += delta* 10*camera.position.z/1000;
 				          }
 						  
 				          if(eo.wheelDeltaX > 100 && scope.item.swipedLeft){
@@ -367,11 +522,11 @@ angular.module('pixwallApp')
 				              
 				          }
 	
-				          camera.position.x -= eo.wheelDeltaX* 1;
-				          camera.position.y += eo.wheelDeltaY* 1;
+				          camera.position.x -= eo.wheelDeltaX* 1*camera.position.z/1000;
+				          camera.position.y += eo.wheelDeltaY* 1*camera.position.z/1000;
 				        }else {
-				        	camera.position.x -= eo.wheelDeltaX* 1;
-				          camera.position.y += eo.wheelDeltaY* 1;
+				        	camera.position.x -= eo.wheelDeltaX* 1*camera.position.z/1000;
+				          camera.position.y += eo.wheelDeltaY* 1*camera.position.z/1000;
 				        }
 					}
 			  
@@ -431,6 +586,8 @@ angular.module('pixwallApp')
 	  	 		var newLabel = document.createElement( 'input' );
 	  	 		newLabel.type="text";
 	  	 		newLabel.value	= text;	
+	  	 		newLabel.name="label";
+
 	  	 		
 	  	 		newLabel.className = 'textLabel';	  	 		
 				var object = new THREE.CSS3DObject( newLabel );
@@ -458,6 +615,8 @@ angular.module('pixwallApp')
 	  	 		var newPin = document.createElement( 'img' );						
 				newPin.setAttribute("src", "images/redPointer.png");
 				newPin.setAttribute("width", 50);
+				newPin.name="area";
+
 				
 				var object = new THREE.CSS3DObject( newPin );
 				scene.add( object );
@@ -477,6 +636,7 @@ angular.module('pixwallApp')
 	  	 		var newArea = document.createElement( 'div' );
 				newArea.innerHTML='<svg width="'+map.width+'" height="'+map.height+'"><path  fill="'+color+'" /></svg>';
 				newArea.className = 'area';	 
+				newArea.name="area";
 
 				//INIT ARRAY OF POINTS
 				newArea.points = [];

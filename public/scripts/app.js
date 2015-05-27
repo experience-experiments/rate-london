@@ -22,17 +22,13 @@ angular
       .when('/', {
         templateUrl: 'views/main.html',
         controller: 'MainCtrl'
-      })
+      }, {reloadOnSearch: false})
        .when('/map/:mapId', {
         templateUrl: 'views/main.html',
         controller: 'MainCtrl'
-      })
-      .when('/about', {
-        templateUrl: 'views/about.html',
-        controller: 'AboutCtrl'
-      })
-     /* .otherwise({
+      }, {reloadOnSearch: false})
+      .otherwise({
         redirectTo: '/'
-      })*/;
+      }, {reloadOnSearch: false});
   })
   ;

@@ -27,6 +27,7 @@ module.exports = function(config) {
       'public/bower_components/angular-route/angular-route.js',
       'public/bower_components/angular-sanitize/angular-sanitize.js',
       'public/bower_components/angular-touch/angular-touch.js',
+      'public/bower_components/easeljs/lib/easeljs-0.8.0.combined.js',
       'public/bower_components/angular-mocks/angular-mocks.js',
       // endbower
       'app/scripts/**/*.js',

@@ -2,22 +2,40 @@
 <!-- saved from url=(0046)http://ratelondon.parseapp.com/views/main.html -->
 <html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"></head><body><main id="mainContainer">
 	<div id="mapContainer">
-		
-		
 	</div>
 	
 	<div id="legend" class="legend">
-		
-		<ul ng-repeat="category in categories">
-				<input style="width:20px" type="radio" ng-model="$parent.selectedCategoryIndex" name="selectedCategoryIndex" id="selectedCategoryIndex" ng-value="$index" checked="">
-				<input type="color" ng-model="category.color">&nbsp;<input id="{{&#39;category&#39;+$index}}" ng-model="category.name" type="text" placeholder="Name" maxlength="30" style="width:125px" ng-enter="onSubmitCategory()">
-
+		<button ng-click="onSubmitNewMap()" style="cursor: pointer;">Create New Map</button>
+		<h2 class="centered"><input  type="text" ng-model="mapName" class="centered hideInputBg" style="border-radius: 3px;border-width: 1px;"></input></h2>
+		<h4 style="font-size:10px;text-align: center; line-height: 0.1em;"><img width="16" height="16" src="images/shareIcon.svg" style="position:relative;top: 4px;"> Share URL</h4>
+		<h4 style="margin-top:-6px;font-size:10px;background: white; text-align: center;border-color: #c5c5c5;border-width: 1px;border-style: dotted">{{shareURL}}</h4>
+		<div class="centered">
+		<h4><select>
+		  <option value="google">Google Map</option>
+		  <option value="open">Open Maps</option>
+		  <option value="mapbox">Map Box</option>
+		  <option value="nasa">Nasa</option>
+		</select></div></h4>
+		<h2 class="centered">Category</h2>
+		<ul>
+			<li ng-repeat="category in categories">
+					<input style="width:20px" type="radio" ng-model="$parent.selectedCategoryIndex" name="selectedCategoryIndex" id="selectedCategoryIndex" ng-value="$index" checked="">
+					<input type="color" ng-model="category.color">&nbsp;<input id="{{&#39;category&#39;+$index}}" class="hideInputBg" ng-model="category.name" type="text" placeholder="Name" maxlength="30" style="width:125px" ng-enter="onSubmitCategory()"  ng-blur="onChangeCategory()"></li>
+			</li>
 		</ul>
 		
 		<!-- ADD CATEGORY -->
 		<ul>
-				<button ng-click="onSubmitCategory()" style="cursor: pointer;">&nbsp;+&nbsp; Add </button>
+				
+			<button class="centered" ng-click="onSubmitCategory()" style="cursor: pointer;">+</button>
 				<!--<input id="newCategoryColor" type="color" ng-model="presetColors[categories.length]">&nbsp;<input ng-model="newCategoryName" type="text" placeholder="New category" maxlength="30" style="width:125px" ng-enter="onSubmitCategory()">-->
+		</ul>
+		
+		<h2 class="centered">Team</h2>
+		<ul>
+			<li>&nbsp;<span style="position:relative;top:-6px"><img class="smallThumb round" src="images/profile.png">&nbsp;&nbsp;Mathieu Gosselin</span></li>
+			<li>&nbsp;<span style="position:relative;top:-6px"><img class="smallThumb round" src="images/profile3.jpg">&nbsp;&nbsp;Gilles Tabart</span></li>
+			<li>&nbsp;<span style="position:relative;top:-6px"><img class="smallThumb round" src="images/profile2.jpg">&nbsp;&nbsp;Satinder Ubi</span></li>
 		</ul>
 		
 		

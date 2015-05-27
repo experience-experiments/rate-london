@@ -13,10 +13,55 @@ body {
 input {
   font-size: 18px; }
 
+h4 {
+  color: #333;
+  font-weight: 100;
+  font-size: 13px; }
+
+ul {
+  margin: 1px;
+  padding: 1px;
+  border-radius: 3px; }
+
+li {
+  margin: 3px;
+  border-radius: 5px;
+  padding: 5px 2px;
+  border-style: dotted;
+  background-color: white;
+  border-width: 1px;
+  line-height: 17px;
+  border-color: #999; }
+
+select {
+  line-height: 30px;
+  font-size: 20px;
+  font-family: Avenir, Arial;
+  background-color: white;
+  border-style: dashed; }
+
+.centered {
+  text-align: center; }
+
+.round {
+  border-radius: 50%;
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: cover; }
+
+.smallThumb {
+  width: 30px;
+  height: 30px;
+  position: relative;
+  top: 6px; }
+
 .bubble {
-  mix-blend-mode: multiply;
   width: 100px;
   height: 100px; }
+
+.area {
+  cursor: pointer;
+  opacity: 0.4; }
 
 .textLabel {
   font-family: avenir, sans, aria;
@@ -28,24 +73,24 @@ input {
   padding: 0px;
   border: 0px;
   background: none;
-  text-shadow: 2px 2px 30px #000000;
-  font-weight: 800; }
+  text-shadow: 2px 2px 30px #000000; }
 
 .legend {
   position: fixed;
   width: 250px;
-  background-color: rgba(227, 224, 224, 0.88);
+  background-color: #f7f4f4;
   font-family: avenir, sans, arial;
-  font-weight: 500;
   font-size: 20px;
   color: #1f1f1f;
   margin: 4px;
-  padding: 1px; }
-  .legend ul {
-    margin: 5px;
-    padding: 1px; }
+  padding: 1px;
+  line-height: 20px; }
   .legend input[text] {
     width: 60px; }
+
+.hideInputBg {
+  border: none;
+  background-color: transparent; }
 
 #hiddenInput {
   position: fixed;
